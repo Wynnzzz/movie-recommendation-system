@@ -208,10 +208,10 @@ Nilai RMSE memiliki satuan yang sama dengan rating (dalam kasus ini, rating yang
 **Kenapa Menggunakan RMSE?**
 <br>RMSE dipilih karena memberikan gambaran yang jelas tentang seberapa jauh hasil prediksi model dari nilai sebenarnya. Meskipun loss function yang digunakan adalah `binary_crossentropy` (karena output sigmoid), RMSE tetap relevan untuk menginterpretasikan error dalam konteks prediksi rating.
 
-<br>**Rumus:**
-$$
-\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}
-$$
+<br>**Rumus:**<br>
+
+$$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$$
+
 <br>
 Hasil RMSE Model:<br>
 ![DL Model RMSE](img/output2.png) <br>
@@ -219,39 +219,62 @@ Hasil RMSE Model:<br>
 -   Pada akhir epoch ke-20, model memperoleh nilai `root_mean_squared_error`: **0.1857** untuk data latih dan **0.1874** untuk data validasi.
 -   Perbedaan antara RMSE latih dan validasi yang kecil menunjukkan model tidak mengalami overfitting yang parah dan memiliki generalisasi yang baik. Penurunan RMSE yang stabil mengindikasikan pembelajaran yang efektif.
 
-### **2. Content-Based Filtering (dengan Heuristik Preferensi Pengguna dan Kemiripan Genre)**
+### 2. Content-Based Filtering (dengan Heuristik Preferensi Pengguna dan Kemiripan Genre)
 
-**Metrik Evaluasi yang Digunakan**
-<br>Evaluasi untuk pendekatan ini lebih difokuskan pada analisis kualitatif dari output, dengan memperhatikan kolom `Genre Similarity to Input` (yang merupakan skor kemiripan genre murni) dan `final_score` (skor gabungan yang dinormalisasi).
-**Cara Kerja Interpretasi `Genre Similarity to Input` (`sim_score`):**
-<br>Skor ini dihitung menggunakan *cosine similarity* antara vektor TF-IDF dari genre film input (yang dipilih pengguna) dan vektor TF-IDF genre dari setiap film kandidat.
-1.  Genre dari film input dan film kandidat diubah menjadi representasi vektor numerik menggunakan TF-IDF. Vektor ini menangkap pentingnya setiap kata/frasa genre.
-2.  *Cosine similarity* mengukur kosinus sudut antara dua vektor tersebut. Skor berkisar antara 0 dan 1.
-    -   Nilai mendekati 1 menunjukkan bahwa profil genre kedua film sangat mirip (vektornya menunjuk ke arah yang hampir sama).
-    -   Nilai mendekati 0 menunjukkan bahwa profil genre sangat berbeda.
-    -   Nilai 0 berarti tidak ada kesamaan genre sama sekali (vektor ortogonal).
-Dengan melihat `Genre Similarity to Input`, kita bisa menilai seberapa besar komponen kemiripan genre murni berkontribusi pada rekomendasi. `final_score` kemudian menggabungkan ini dengan sinyal preferensi pengguna.
+**Metrik Evaluasi yang Digunakan**  
+Evaluasi pendekatan ini lebih difokuskan pada analisis kualitatif dari output, dengan memperhatikan kolom **`Genre Similarity to Input`** (skor kemiripan genre murni) dan **`final_score`** (skor gabungan yang dinormalisasi).
 
-**Kenapa Fokus pada `Genre Similarity to Input` untuk Analisis Konten?**
-<br>Skor ini secara langsung merefleksikan inti dari pendekatan Content-Based Filtering, yaitu merekomendasikan item berdasarkan kesamaan fiturnya. Dalam sistem hybrid ini, `Genre Similarity to Input` membantu memahami apakah rekomendasi yang muncul memiliki justifikasi dari sisi konten atau lebih didominasi oleh sinyal popularitas dari `score` awal.
+**Cara Kerja Interpretasi `Genre Similarity to Input` (`sim_score`):**  
+Skor ini dihitung menggunakan *cosine similarity* antara vektor TF-IDF genre film input (dipilih pengguna) dan vektor TF-IDF genre setiap film kandidat.
 
-**Evaluasi Kualitatif (dan Potensi Kuantitatif):**
-<br>Analisis kualitatif melibatkan pemeriksaan apakah film-film yang direkomendasikan dengan `final_score` tinggi juga memiliki `Genre Similarity to Input` yang masuk akal atau apakah ada diversifikasi yang baik.
-Untuk evaluasi kuantitatif, metrik seperti **Precision@K** dan **Recall@K** dapat dihitung. Prosedurnya:
-1.  **Definisi Relevansi:** Sebuah film rekomendasi dianggap relevan jika film tersebut ada di *hold-out set* pengguna DAN (misalnya) memiliki `Genre Similarity to Input` di atas threshold tertentu (misalnya, > 0.5) atau jika `final_score`nya tinggi.
-2.  **Perhitungan:** Hitung berapa banyak dari K rekomendasi teratas yang memenuhi kriteria relevansi tersebut, lalu bagi dengan K (untuk Precision@K) atau dengan total item relevan di hold-out set (untuk Recall@K).
+1. Genre film input dan kandidat diubah menjadi vektor numerik TF-IDF yang menangkap pentingnya kata/frasa genre.  
+2. *Cosine similarity* mengukur kemiripan arah antara dua vektor: <br>
+   
+   $$\text{cosine similarity}(\mathbf{A}, \mathbf{B}) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$$
+   
+   - Nilai mendekati 1 → genre sangat mirip  
+   - Nilai mendekati 0 → genre sangat berbeda atau ortogonal  
 
-**Contoh Hasil (Kualitatif dari Output Notebook):**
-Untuk input "Toy Story 2 (1999)":
--   "Toy Story 2 (1999)" sendiri memiliki `final_score` 1.0 dan `Genre Similarity to Input` 1.0 (karena identik).
--   "Toy Story (1995)" dan "Monsters, Inc. (2001)" juga memiliki `Genre Similarity to Input` 1.0, menunjukkan kemiripan genre yang sangat tinggi dengan film input. `final_score` mereka juga tinggi (0.92 dan 0.59), menandakan dukungan dari preferensi pengguna.
--   "Shawshank Redemption" memiliki `Genre Similarity to Input` 0.0 (genre sangat berbeda), namun `final_score` masih cukup tinggi (0.52). Ini menunjukkan bahwa meskipun genrenya tidak mirip, film ini populer di antara pengguna yang juga menyukai "Toy Story 2" (komponen `score` awal mendominasi).
--   Rekomendasi seperti "Star Wars: Episode IV" memiliki `Genre Similarity to Input` rendah (0.087) tetapi `final_score` moderat (0.478), menunjukkan keseimbangan antara sedikit kemiripan konten dan preferensi komunitas.
+Dengan melihat **`Genre Similarity to Input`**, kita dapat menilai kontribusi kemiripan genre murni pada rekomendasi. Sedangkan **`final_score`** menggabungkan ini dengan sinyal preferensi pengguna (popularitas, rating, dan heuristik).
 
-**Insight (Kualitatif):**
--   Sistem berhasil merekomendasikan film dengan kemiripan genre tinggi (ditunjukkan oleh `Genre Similarity to Input` yang tinggi).
--   Sistem juga mampu merekomendasikan film dengan genre berbeda jika didukung oleh preferensi pengguna yang kuat, menunjukkan potensi *serendipity*.
--   Kolom `final_score` dan `Genre Similarity to Input` bersama-sama memberikan pemahaman yang lebih baik tentang mengapa sebuah film direkomendasikan.
+---
+
+**Kenapa Fokus pada `Genre Similarity to Input` untuk Analisis Konten?**  
+Skor ini merefleksikan inti Content-Based Filtering, yaitu merekomendasikan item berdasarkan kesamaan fiturnya. Dalam sistem hybrid, skor ini membantu menilai apakah rekomendasi didasari oleh kesamaan konten atau lebih dipengaruhi sinyal popularitas dari skor awal.
+
+---
+
+**Evaluasi Kualitatif (dan Potensi Kuantitatif):**  
+Analisis kualitatif melihat apakah film dengan **`final_score`** tinggi juga memiliki **`Genre Similarity to Input`** yang logis atau ada diversifikasi genre.
+
+Untuk evaluasi kuantitatif, metrik seperti **Precision@K** dan **Recall@K** dapat digunakan. Prosedur umum:
+
+- **Definisi relevansi:** Sebuah film dianggap relevan jika berada dalam *hold-out set* pengguna dan memenuhi threshold skor kemiripan genre (misal, `sim_score > 0.5`) atau `final_score` tinggi.
+
+- **Precision@K** menghitung proporsi rekomendasi relevan di antara K teratas:
+
+$$\text{Precision@K} = \frac{|\{\text{Rekomendasi relevan di top K}\}|}{K}$$
+
+- **Recall@K** mengukur proporsi film relevan dari *hold-out set* yang berhasil direkomendasikan di top K:
+
+$$\text{Recall@K} = \frac{|\{\text{Rekomendasi relevan di top K}\}|}{|\{\text{Total item relevan dalam hold-out set}\}|}$$
+
+---
+
+**Contoh Hasil (Kualitatif dari Output Notebook):**  
+Untuk input **"Toy Story 2 (1999)"**:
+
+- Film input sendiri memiliki **`final_score` = 1.0** dan **`Genre Similarity to Input` = 1.0** (identik).  
+- Film seperti **"Toy Story (1995)"** dan **"Monsters, Inc. (2001)"** juga memiliki skor genre 1.0, menunjukkan kemiripan tinggi, dan `final_score` tinggi (0.92 dan 0.59).  
+- Film seperti **"Shawshank Redemption"** memiliki skor genre 0.0 (genre berbeda) namun `final_score` cukup tinggi (0.52), menandakan rekomendasi berdasar popularitas atau preferensi pengguna yang kuat.  
+- Rekomendasi lain seperti **"Star Wars: Episode IV"** memiliki skor genre rendah (0.087) dan `final_score` moderat (0.478), memperlihatkan keseimbangan antara kemiripan konten dan preferensi komunitas.
+
+---
+
+**Insight (Kualitatif):**  
+- Sistem merekomendasikan film dengan kemiripan genre tinggi secara efektif.  
+- Sistem juga mampu merekomendasikan film berbeda genre jika didukung preferensi pengguna (potensi *serendipity*).  
+- Kolom **`final_score`** dan **`Genre Similarity to Input`** bersama-sama memberikan pemahaman mengapa sebuah film direkomendasikan, menggabungkan konten dan sinyal sosial.
   
 ## Conclusion
 
