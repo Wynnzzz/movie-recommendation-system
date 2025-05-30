@@ -196,37 +196,63 @@ Contoh: Jika pengguna mencari "Toy Story" dan memilih "Toy Story 2 (1999)":
 ## Evaluation
 ### **1. Collaborative Filtering (Deep Learning)**
 **Metrik Evaluasi yang Digunakan**
-<br>Root Mean Squared Error (RMSE) digunakan untuk mengevaluasi akurasi prediksi rating model.
+<br>Root Mean Squared Error (RMSE) digunakan sebagai metrik utama untuk mengevaluasi seberapa akurat model memprediksi rating pengguna.
+**Cara Kerja Metrik RMSE:**
+<br>RMSE menghitung akar kuadrat dari rata-rata kuadrat selisih antara nilai rating aktual ($y_i$) dan nilai rating prediksi ($\hat{y}_i$). Langkah-langkahnya:
+1.  Untuk setiap interaksi pengguna-film di set validasi, hitung selisih antara rating aktual dan rating prediksi: $(y_i - \hat{y}_i)$.
+2.  Kuadratkan selisih tersebut: $(y_i - \hat{y}_i)^2$. Ini memberi penalti lebih besar pada kesalahan yang besar.
+3.  Hitung rata-rata dari semua kuadrat selisih tersebut (Mean Squared Error - MSE).
+4.  Ambil akar kuadrat dari MSE untuk mendapatkan RMSE.
+Nilai RMSE memiliki satuan yang sama dengan rating (dalam kasus ini, rating yang dinormalisasi), sehingga mudah diinterpretasikan. Semakin kecil nilai RMSE, semakin dekat prediksi model dengan nilai aktual, yang berarti model lebih akurat.
+
 **Kenapa Menggunakan RMSE?**
-<br>RMSE memberikan gambaran jelas seberapa jauh prediksi dari nilai sebenarnya.
-<br>**Rumus:**<br>
-$$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$$
+<br>RMSE dipilih karena memberikan gambaran yang jelas tentang seberapa jauh hasil prediksi model dari nilai sebenarnya. Meskipun loss function yang digunakan adalah `binary_crossentropy` (karena output sigmoid), RMSE tetap relevan untuk menginterpretasikan error dalam konteks prediksi rating.
+
+<br>**Rumus:**
+$$
+\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}
+$$
 <br>
 Hasil RMSE Model:<br>
 ![DL Model RMSE](img/output2.png) <br>
 **Insight:**
--   RMSE akhir: latih **0.1857**, validasi **0.1874**.
--   Model tidak overfitting signifikan dan belajar dengan baik.
+-   Pada akhir epoch ke-20, model memperoleh nilai `root_mean_squared_error`: **0.1857** untuk data latih dan **0.1874** untuk data validasi.
+-   Perbedaan antara RMSE latih dan validasi yang kecil menunjukkan model tidak mengalami overfitting yang parah dan memiliki generalisasi yang baik. Penurunan RMSE yang stabil mengindikasikan pembelajaran yang efektif.
 
 ### **2. Content-Based Filtering (dengan Heuristik Preferensi Pengguna dan Kemiripan Genre)**
 
 **Metrik Evaluasi yang Digunakan**
-<br>Evaluasi untuk pendekatan ini bersifat **kualitatif** dengan melihat relevansi output, skor kemiripan genre (`sim_score`), dan skor gabungan (`final_score`). Metrik kuantitatif seperti Precision@K dapat diimplementasikan dengan *hold-out set* untuk mengukur seberapa sering rekomendasi dengan `final_score` tinggi cocok dengan preferensi pengguna yang ditahan.
+<br>Evaluasi untuk pendekatan ini lebih difokuskan pada analisis kualitatif dari output, dengan memperhatikan kolom `Genre Similarity to Input` (yang merupakan skor kemiripan genre murni) dan `final_score` (skor gabungan yang dinormalisasi).
+**Cara Kerja Interpretasi `Genre Similarity to Input` (`sim_score`):**
+<br>Skor ini dihitung menggunakan *cosine similarity* antara vektor TF-IDF dari genre film input (yang dipilih pengguna) dan vektor TF-IDF genre dari setiap film kandidat.
+1.  Genre dari film input dan film kandidat diubah menjadi representasi vektor numerik menggunakan TF-IDF. Vektor ini menangkap pentingnya setiap kata/frasa genre.
+2.  *Cosine similarity* mengukur kosinus sudut antara dua vektor tersebut. Skor berkisar antara 0 dan 1.
+    -   Nilai mendekati 1 menunjukkan bahwa profil genre kedua film sangat mirip (vektornya menunjuk ke arah yang hampir sama).
+    -   Nilai mendekati 0 menunjukkan bahwa profil genre sangat berbeda.
+    -   Nilai 0 berarti tidak ada kesamaan genre sama sekali (vektor ortogonal).
+Dengan melihat `Genre Similarity to Input`, kita bisa menilai seberapa besar komponen kemiripan genre murni berkontribusi pada rekomendasi. `final_score` kemudian menggabungkan ini dengan sinyal preferensi pengguna.
 
-**Kenapa Evaluasi Kualitatif (dan Potensi Kuantitatif)?**
-<br>Skor akhir adalah heuristik. Analisis kualitatif membantu memahami apakah kombinasi sinyal (preferensi pengguna dan kemiripan konten) menghasilkan rekomendasi yang baik. `sim_score` memberikan transparansi pada aspek kemiripan genre.
+**Kenapa Fokus pada `Genre Similarity to Input` untuk Analisis Konten?**
+<br>Skor ini secara langsung merefleksikan inti dari pendekatan Content-Based Filtering, yaitu merekomendasikan item berdasarkan kesamaan fiturnya. Dalam sistem hybrid ini, `Genre Similarity to Input` membantu memahami apakah rekomendasi yang muncul memiliki justifikasi dari sisi konten atau lebih didominasi oleh sinyal popularitas dari `score` awal.
+
+**Evaluasi Kualitatif (dan Potensi Kuantitatif):**
+<br>Analisis kualitatif melibatkan pemeriksaan apakah film-film yang direkomendasikan dengan `final_score` tinggi juga memiliki `Genre Similarity to Input` yang masuk akal atau apakah ada diversifikasi yang baik.
+Untuk evaluasi kuantitatif, metrik seperti **Precision@K** dan **Recall@K** dapat dihitung. Prosedurnya:
+1.  **Definisi Relevansi:** Sebuah film rekomendasi dianggap relevan jika film tersebut ada di *hold-out set* pengguna DAN (misalnya) memiliki `Genre Similarity to Input` di atas threshold tertentu (misalnya, > 0.5) atau jika `final_score`nya tinggi.
+2.  **Perhitungan:** Hitung berapa banyak dari K rekomendasi teratas yang memenuhi kriteria relevansi tersebut, lalu bagi dengan K (untuk Precision@K) atau dengan total item relevan di hold-out set (untuk Recall@K).
 
 **Contoh Hasil (Kualitatif dari Output Notebook):**
 Untuk input "Toy Story 2 (1999)":
--   Rekomendasi teratas adalah "Toy Story 2 (1999)" itu sendiri dengan `final_score` 1.0 dan `sim_score` 1.0.
--   "Toy Story (1995)" dan "Monsters, Inc. (2001)" memiliki `sim_score` 1.0 (genre sangat mirip) dan `final_score` tinggi (0.92 dan 0.59).
--   "Shawshank Redemption" memiliki `sim_score` 0.0 (genre berbeda) namun `final_score` cukup tinggi (0.52), menunjukkan pengaruh kuat dari skor preferensi pengguna.
+-   "Toy Story 2 (1999)" sendiri memiliki `final_score` 1.0 dan `Genre Similarity to Input` 1.0 (karena identik).
+-   "Toy Story (1995)" dan "Monsters, Inc. (2001)" juga memiliki `Genre Similarity to Input` 1.0, menunjukkan kemiripan genre yang sangat tinggi dengan film input. `final_score` mereka juga tinggi (0.92 dan 0.59), menandakan dukungan dari preferensi pengguna.
+-   "Shawshank Redemption" memiliki `Genre Similarity to Input` 0.0 (genre sangat berbeda), namun `final_score` masih cukup tinggi (0.52). Ini menunjukkan bahwa meskipun genrenya tidak mirip, film ini populer di antara pengguna yang juga menyukai "Toy Story 2" (komponen `score` awal mendominasi).
+-   Rekomendasi seperti "Star Wars: Episode IV" memiliki `Genre Similarity to Input` rendah (0.087) tetapi `final_score` moderat (0.478), menunjukkan keseimbangan antara sedikit kemiripan konten dan preferensi komunitas.
 
 **Insight (Kualitatif):**
--   Film input dan film dengan genre sangat mirip mendapatkan skor tinggi, sesuai harapan.
--   Sistem juga merekomendasikan film dengan genre berbeda namun populer di antara pengguna yang menyukai film input, menunjukkan kemampuan untuk menemukan item yang beragam namun relevan secara kontekstual.
--   `final_score` yang dinormalisasi memberikan peringkat yang lebih terdiferensiasi dibandingkan skor awal yang sama untuk banyak film (seperti pada output sebelumnya).
-
+-   Sistem berhasil merekomendasikan film dengan kemiripan genre tinggi (ditunjukkan oleh `Genre Similarity to Input` yang tinggi).
+-   Sistem juga mampu merekomendasikan film dengan genre berbeda jika didukung oleh preferensi pengguna yang kuat, menunjukkan potensi *serendipity*.
+-   Kolom `final_score` dan `Genre Similarity to Input` bersama-sama memberikan pemahaman yang lebih baik tentang mengapa sebuah film direkomendasikan.
+  
 ## Conclusion
 
 -   Model Collaborative Filtering berbasis Deep Learning mencapai RMSE **0.1857** (latih) dan **0.1874** (validasi), menunjukkan performa prediksi rating yang baik.
