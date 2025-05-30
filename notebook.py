@@ -227,6 +227,7 @@ print(recommended_movies[['title', 'genres']])
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MinMaxScaler
 
 vectorizer_title = TfidfVectorizer(ngram_range=(1,2))
 tfidf_title = vectorizer_title.fit_transform(df_movies['clean_title'])
@@ -244,7 +245,7 @@ def search_by_title(title, top_n=5):
     results = results.sort_values(by='similarity', ascending=False)
     return results
 
-def search_similar_genres(genres, top_n=10):
+def search_similar_genres(genres, top_n=20):
     genres = genres.lower().strip()
     query_vec = vectorizer_genres.transform([genres])
     similarity = cosine_similarity(query_vec, tfidf_genres).flatten()
@@ -255,48 +256,77 @@ def search_similar_genres(genres, top_n=10):
     return results
 
 def scores_calculator(movie_id):
-    # Cari user yang memberi rating >= 4 pada movie_id tersebut
-    similar_users = combined_data[(combined_data['movieId'] == movie_id) & (combined_data['rating'] >= 4)]['userId'].unique()
+    # Cari pengguna yang menyukai film ini
+    similar_users = combined_data[
+        (combined_data['movieId'] == movie_id) & (combined_data['rating'] >= 4)
+    ]['userId'].unique()
 
-    # Film yang disukai user tersebut (rating >= 4)
-    similar_user_recs = combined_data[(combined_data['userId'].isin(similar_users)) & (combined_data['rating'] >= 4)]['movieId']
-    similar_user_recs = similar_user_recs.value_counts() / len(similar_users)  # proporsi user yg suka film tsb
+    # Film yang disukai oleh user serupa
+    similar_user_recs = combined_data[
+        (combined_data['userId'].isin(similar_users)) & (combined_data['rating'] >= 4)
+    ]['movieId'].value_counts()
+    similar_user_recs = similar_user_recs / similar_user_recs.max()
 
-    # Semua user yang menonton film tsb
-    all_users = combined_data[(combined_data['movieId'].isin(similar_user_recs.index)) & (combined_data['rating'] >= 4)]
-    all_users_recs = all_users['movieId'].value_counts() / all_users['userId'].nunique()
+    # Film populer secara umum
+    all_users_recs = combined_data[
+        (combined_data['movieId'].isin(similar_user_recs.index)) & (combined_data['rating'] >= 4)
+    ]['movieId'].value_counts()
+    all_users_recs = all_users_recs / all_users_recs.max()
 
-    # Genre dari film yang dipilih
+    # Genre film yang dipilih
     genres_of_selected_movie = df_movies[df_movies['movieId'] == movie_id]['genres_list'].values[0]
 
-    # Cari film dengan genre mirip
+    # Film dengan genre mirip
     movies_with_similar_genres = search_similar_genres(genres_of_selected_movie)
+    genre_similar_ids = movies_with_similar_genres['movieId'].values
 
-    # Beri bobot 1.5 untuk film yang mirip genre dan disukai user
-    indices = [idx for idx in movies_with_similar_genres['movieId'] if idx in similar_user_recs.index]
-    similar_user_recs.loc[indices] *= 1.5
+    # Bobot untuk genre similarity
+    for idx in genre_similar_ids:
+        if idx in similar_user_recs:
+            similar_user_recs[idx] *= 1.5
+        if idx in all_users_recs:
+            all_users_recs[idx] *= 0.9
 
-    # Beri bobot 0.9 untuk film yang mirip genre dan disukai oleh semua user
-    indices = [idx for idx in movies_with_similar_genres['movieId'] if idx in all_users_recs.index]
-    all_users_recs.loc[indices] *= 0.9
-
+    # Gabungkan skor
     rec_percentages = pd.concat([similar_user_recs, all_users_recs], axis=1).fillna(0)
     rec_percentages.columns = ['similar', 'all']
-    rec_percentages['score'] = rec_percentages['similar'] / rec_percentages['all'].replace(0, np.nan)
-    rec_percentages = rec_percentages.replace(np.nan, 0)
-    rec_percentages = rec_percentages.sort_values('score', ascending=False)
+    rec_percentages['score'] = 0.6 * rec_percentages['similar'] + 0.4 * rec_percentages['all']
+
+    # Hitung cosine similarity genre (sim_score)
+    sim_scores = {}
+    for idx in rec_percentages.index:
+        target_genres = df_movies[df_movies['movieId'] == idx]['genres_list'].values
+        if len(target_genres) > 0:
+            query_vec = vectorizer_genres.transform([genres_of_selected_movie])
+            target_vec = vectorizer_genres.transform([target_genres[0]])
+            sim = cosine_similarity(query_vec, target_vec)[0][0]
+        else:
+            sim = 0.0
+        sim_scores[idx] = sim
+    rec_percentages['sim_score'] = pd.Series(sim_scores)
+
+    # Skor akhir
+    rec_percentages['final_score'] = (
+        0.7 * rec_percentages['score'] + 0.3 * rec_percentages['sim_score']
+    )
+
+    # Normalisasi final_score ke 0–1
+    scaler = MinMaxScaler()
+    rec_percentages['final_score'] = scaler.fit_transform(rec_percentages[['final_score']])
+
+    rec_percentages = rec_percentages.sort_values('final_score', ascending=False)
     return rec_percentages
 
 def recommendation_results(user_input, choice=0):
     title_candidates = search_by_title(user_input)
     if len(title_candidates) == 0:
-        return pd.DataFrame()  # tidak ada hasil
+        return pd.DataFrame()
 
     movie_id = title_candidates.iloc[choice]['movieId']
     scores = scores_calculator(movie_id)
 
-    # Gabungkan dengan data movie
-    results = scores.head(10).merge(df_movies, left_index=True, right_on='movieId')[['title', 'score', 'genres_list']]
+    results = scores.head(10).merge(df_movies, left_index=True, right_on='movieId')[[
+        'title', 'genres_list', 'score', 'sim_score', 'final_score']]
     results = results.rename(columns={'genres_list': 'genres'})
     return results
 
@@ -306,7 +336,7 @@ candidates = search_by_title(user_input)
 for i in range(min(5, len(candidates))):
     print(f"{i}: {candidates.iloc[i]['title']}")
 
-choice = 0
+choice = 3
 
 if choice in range(len(candidates)):
     print("\nRecommendations based on your choice:")
