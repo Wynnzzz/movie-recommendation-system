@@ -198,92 +198,88 @@ Contoh: Jika pengguna mencari "Toy Story" dan memilih "Toy Story 2 (1999)":
 | 10 | Pulp Fiction (1994)                       | Comedy, Crime, Drama, Thriller               | 0.646498 | 0.039931  | 0.469903    |
 
 ## Evaluation
+
 ### **1. Collaborative Filtering (Deep Learning)**
 **Metrik Evaluasi yang Digunakan**
-<br>Root Mean Squared Error (RMSE) digunakan sebagai metrik utama untuk mengevaluasi seberapa akurat model memprediksi rating pengguna.
+<br>Root Mean Squared Error (RMSE) digunakan sebagai metrik utama untuk mengevaluasi seberapa akurat model `RecommenderNet` dalam memprediksi rating pengguna.
 **Cara Kerja Metrik RMSE:**
-<br>RMSE menghitung akar kuadrat dari rata-rata kuadrat selisih antara nilai rating aktual ($y_i$) dan nilai rating prediksi ($\hat{y}_i$). Langkah-langkahnya:
-1.  Untuk setiap interaksi pengguna-film di set validasi, hitung selisih antara rating aktual dan rating prediksi: $(y_i - \hat{y}_i)$.
-2.  Kuadratkan selisih tersebut: $(y_i - \hat{y}_i)^2$. Ini memberi penalti lebih besar pada kesalahan yang besar.
-3.  Hitung rata-rata dari semua kuadrat selisih tersebut (Mean Squared Error - MSE).
+<br>RMSE menghitung akar kuadrat dari rata-rata kuadrat selisih antara nilai rating aktual ($y_i$) yang telah dinormalisasi (skala 0-1) dan nilai rating prediksi ($\hat{y}_i$) dari model. Langkah-langkahnya adalah sebagai berikut:
+1.  Untuk setiap pasangan pengguna-film dalam set data validasi, hitung selisih antara rating aktual ternormalisasi dan rating prediksi dari model: $(y_i - \hat{y}_i)$.
+2.  Kuadratkan selisih tersebut: $(y_i - \hat{y}_i)^2$. Langkah ini memberikan bobot lebih besar pada kesalahan prediksi yang lebih besar.
+3.  Hitung rata-rata dari semua nilai kuadrat selisih tersebut untuk mendapatkan Mean Squared Error (MSE).
 4.  Ambil akar kuadrat dari MSE untuk mendapatkan RMSE.
-Nilai RMSE memiliki satuan yang sama dengan rating (dalam kasus ini, rating yang dinormalisasi), sehingga mudah diinterpretasikan. Semakin kecil nilai RMSE, semakin dekat prediksi model dengan nilai aktual, yang berarti model lebih akurat.
+Nilai RMSE memiliki skala yang sama dengan data target (rating ternormalisasi), sehingga memudahkan interpretasi. Semakin kecil nilai RMSE, semakin dekat prediksi model dengan nilai aktual, yang mengindikasikan akurasi prediksi yang lebih baik.
 
 **Kenapa Menggunakan RMSE?**
-<br>RMSE dipilih karena memberikan gambaran yang jelas tentang seberapa jauh hasil prediksi model dari nilai sebenarnya. Meskipun loss function yang digunakan adalah `binary_crossentropy` (karena output sigmoid), RMSE tetap relevan untuk menginterpretasikan error dalam konteks prediksi rating.
+<br>RMSE dipilih karena memberikan gambaran yang jelas mengenai besarnya error rata-rata prediksi model dalam satuan yang sama dengan data target. Metrik ini sensitif terhadap error besar, yang penting dalam konteks prediksi rating. Meskipun fungsi loss yang digunakan selama training adalah `binary_crossentropy` (karena output sigmoid), RMSE tetap menjadi metrik yang intuitif untuk menilai performa prediksi rating.
 
 <br>**Rumus:**<br>
 
 $$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$$
 
 <br>
-Hasil RMSE Model:<br>
-![DL Model RMSE](img/output2.png) <br>
+**Hasil RMSE Model:**<br>
+Visualisasi learning curve RMSE selama proses training (20 epoch) disajikan di bawah ini:<br>
+![DL Model RMSE](img/output2.png)<br>
 **Insight:**
--   Pada akhir epoch ke-20, model memperoleh nilai `root_mean_squared_error`: **0.1857** untuk data latih dan **0.1874** untuk data validasi.
--   Perbedaan antara RMSE latih dan validasi yang kecil menunjukkan model tidak mengalami overfitting yang parah dan memiliki generalisasi yang baik. Penurunan RMSE yang stabil mengindikasikan pembelajaran yang efektif.
+-   Pada akhir epoch ke-20, model `RecommenderNet` memperoleh nilai `root_mean_squared_error` sebesar **0.1857** untuk data latih dan **0.1874** untuk data validasi.
+-   Perbedaan yang kecil antara RMSE pada data latih dan data validasi menunjukkan bahwa model tidak mengalami overfitting yang signifikan dan memiliki kemampuan generalisasi yang baik terhadap data yang belum pernah dilihat sebelumnya. Penurunan RMSE yang konsisten pada kedua set data selama epoch menunjukkan bahwa proses pembelajaran model berjalan efektif.
 
 ### 2. Content-Based Filtering (dengan Heuristik Preferensi Pengguna dan Kemiripan Genre)
 
 **Metrik Evaluasi yang Digunakan**  
-Evaluasi pendekatan ini lebih difokuskan pada analisis kualitatif dari output, dengan memperhatikan kolom **`Genre Similarity to Input`** (skor kemiripan genre murni) dan **`final_score`** (skor gabungan yang dinormalisasi).
+Untuk sistem Content-Based Filtering ini, evaluasi performa dalam menghasilkan daftar rekomendasi top-N dilakukan menggunakan metrik **Precision@K** dan **Recall@K**. Metrik ini menilai kualitas daftar rekomendasi yang dihasilkan oleh `final_score`, yang merupakan skor gabungan dari preferensi pengguna dan kemiripan konten.
 
-**Cara Kerja Interpretasi `Genre Similarity to Input` (`sim_score`):**  
-Skor ini dihitung menggunakan *cosine similarity* antara vektor TF-IDF genre film input (dipilih pengguna) dan vektor TF-IDF genre setiap film kandidat.
+**Cara Kerja Metrik Precision@K dan Recall@K:**
+1.  **Pemilihan Pengguna dan Pembagian Data (Simulasi):**
+    *   Dalam implementasi evaluasi ini, dipilih satu `user_id` (misalnya, 123) sebagai sampel untuk pengujian.
+    *   **Set Film yang Disukai Pengguna (Ground Truth / Hold-out):** Diambil semua film yang telah diberi rating tinggi (rating >= 4.0) oleh `user_id` tersebut dari `df_ratings`. Daftar `movieId` dari film-film ini (`hold_out_ids`) dijadikan sebagai ground truth item yang relevan.
+    *   **Input untuk Rekomendasi:** Untuk mensimulasikan skenario pengguna, sebuah film input (misalnya, "Toy Story 2 (1999)" yang merupakan pilihan ke-3 dari hasil pencarian "Toy Story") digunakan untuk memicu sistem rekomendasi Content-Based Filtering.
 
-1. Genre film input dan kandidat diubah menjadi vektor numerik TF-IDF yang menangkap pentingnya kata/frasa genre.  
-2. *Cosine similarity* mengukur kemiripan arah antara dua vektor: <br>
-   
-   $$\text{cosine similarity}(\mathbf{A}, \mathbf{B}) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$$
-   
-   - Nilai mendekati 1 → genre sangat mirip  
-   - Nilai mendekati 0 → genre sangat berbeda atau ortogonal  
+2.  **Generasi Rekomendasi:**
+    *   Berdasarkan film input yang dipilih ("Toy Story 2 (1999)"), sistem menghasilkan daftar top-K rekomendasi (K=10) film menggunakan fungsi `recommendation_results`. Daftar `movieId` dari rekomendasi ini (`recommended_ids`) kemudian dievaluasi.
 
-Dengan melihat **`Genre Similarity to Input`**, kita dapat menilai kontribusi kemiripan genre murni pada rekomendasi. Sedangkan **`final_score`** menggabungkan ini dengan sinyal preferensi pengguna (popularitas, rating, dan heuristik).
+3.  **Perhitungan Metrik:**
+    *   **Item Relevan yang Direkomendasikan:** Dihitung jumlah film dari `recommended_ids` (top-K) yang juga terdapat dalam `hold_out_ids` (film yang benar-benar disukai pengguna).
+    *   **Precision@K:** Mengukur seberapa banyak film yang direkomendasikan dalam K teratas yang memang relevan (disukai) oleh pengguna. Jika sistem merekomendasikan K film, dan `r` di antaranya ada di `hold_out_ids`, maka Precision@K = `r/K`. Metrik ini menunjukkan ketepatan rekomendasi.
+    *   **Recall@K:** Mengukur seberapa banyak film relevan (yang disukai pengguna) yang berhasil ditemukan dalam K rekomendasi teratas. Jika ada `R` film total di `hold_out_ids`, dan `r` di antaranya ada di top-K rekomendasi, maka Recall@K = `r/R`. Metrik ini menunjukkan kelengkapan sistem dalam menemukan item relevan.
 
----
+<br>**Rumus:**<br>
 
-**Kenapa Fokus pada `Genre Similarity to Input` untuk Analisis Konten?**  
-Skor ini merefleksikan inti Content-Based Filtering, yaitu merekomendasikan item berdasarkan kesamaan fiturnya. Dalam sistem hybrid, skor ini membantu menilai apakah rekomendasi didasari oleh kesamaan konten atau lebih dipengaruhi sinyal popularitas dari skor awal.
+$$\text{Precision@K} = \frac{|\{\text{Rekomendasi relevan di top K}\} \cap \{\text{Item di Hold-out}\}|}{K}$$
+<br>
+$$\text{Recall@K} = \frac{|\{\text{Rekomendasi relevan di top K}\} \cap \{\text{Item di Hold-out}\}|}{|\{\text{Total item relevan dalam Hold-out set}\}|}$$
+<br>
+Untuk evaluasi yang lebih komprehensif, prosedur ini idealnya diulang untuk banyak pengguna uji dan hasilnya dirata-ratakan.
 
----
+**Kenapa Menggunakan Precision@K dan Recall@K?**  
+Metrik ini secara langsung menilai kualitas dari daftar rekomendasi top-N yang dihasilkan. Precision@K penting untuk memastikan pengguna tidak disajikan banyak rekomendasi yang tidak relevan, sementara Recall@K penting untuk memastikan pengguna tidak melewatkan banyak item yang mungkin mereka sukai.
 
-**Evaluasi Kualitatif (dan Potensi Kuantitatif):**  
-Analisis kualitatif melihat apakah film dengan **`final_score`** tinggi juga memiliki **`Genre Similarity to Input`** yang logis atau ada diversifikasi genre.
+**Hasil Metrik (untuk Pengguna Sampel dan Input Tertentu):**  
+Berdasarkan simulasi evaluasi untuk `user_id = 123` dengan input "Toy Story 2 (1999)" dan K=10:
+-   Recommended Movie IDs (top-10): `[1, 260, 296, 318, 2571, 3114, 4306, 4886, 6377, 8961]`
+-   Relevant Movie IDs (liked by user, `hold_out_ids`): `[223, 327, ..., 3114, 3265, 3267, 3418]` (total 40 film)
+-   Film yang relevan dan direkomendasikan di top-10: `[2571, 3114]` (2 film)
+-   **Precision@10**: 2 / 10 = **0.2000**
+-   **Recall@10**: 2 / 40 = **0.0500**
 
-Untuk evaluasi kuantitatif, metrik seperti **Precision@K** dan **Recall@K** dapat digunakan. Prosedur umum:
+**Analisis Kualitatif Tambahan (Menggunakan `Genre Similarity to Input`):**
+Kolom `Genre Similarity to Input` (`sim_score`) dalam output rekomendasi Content-Based Filtering dihitung menggunakan *cosine similarity* antara vektor TF-IDF genre film input dan film kandidat.
+-   **Cara Kerja `sim_score`**: Skor ini berkisar antara 0 dan 1. Nilai mendekati 1 menunjukkan kemiripan genre yang sangat tinggi, sementara nilai mendekati 0 menunjukkan perbedaan genre yang signifikan.
+-   **Interpretasi dalam Output**:
+    -   Untuk input "Toy Story 2 (1999)":
+        -   Film seperti "Toy Story (1995)" dan "Monsters, Inc. (2001)" memiliki `sim_score` = 1.0000, menunjukkan kemiripan genre yang sempurna dengan input. `final_score` mereka juga tinggi (0.922 dan 0.686), yang mengindikasikan bahwa selain kemiripan genre, preferensi pengguna lain juga mendukung rekomendasi ini.
+        -   Film "Shawshank Redemption, The (1994)" memiliki `sim_score` = 0.0000 (genre sangat berbeda), namun `final_score` nya masih cukup tinggi (0.525). Ini menunjukkan bahwa rekomendasi ini lebih didorong oleh skor preferensi pengguna yang kuat (`score` awal sebesar 0.741) daripada kemiripan genre.
+        -   Film seperti "Star Wars: Episode IV - A New Hope (1977)" menunjukkan keseimbangan, dengan `sim_score` rendah (0.0879) namun `score` preferensi pengguna yang moderat (0.638), menghasilkan `final_score` 0.478.
 
-- **Definisi relevansi:** Sebuah film dianggap relevan jika berada dalam *hold-out set* pengguna dan memenuhi threshold skor kemiripan genre (misal, `sim_score > 0.5`) atau `final_score` tinggi.
+**Insight (Kualitatif dan Kuantitatif):**
+-   Secara kuantitatif untuk pengguna sampel, Precision@10 sebesar 0.2000 berarti 2 dari 10 film yang direkomendasikan memang disukai oleh pengguna tersebut. Recall@10 sebesar 0.0500 berarti dari 40 film yang disukai pengguna, sistem berhasil merekomendasikan 2 di antaranya dalam 10 besar. Nilai ini memberikan baseline performa, yang dapat ditingkatkan dengan tuning bobot atau heuristik lebih lanjut.
+-   Secara kualitatif, analisis `sim_score` menunjukkan bahwa sistem mampu mengidentifikasi film dengan genre yang sangat mirip. Kombinasinya dengan skor preferensi dalam `final_score` memungkinkan sistem untuk juga merekomendasikan film dengan genre berbeda namun populer di antara pengguna dengan selera serupa, yang berpotensi meningkatkan *serendipity*.
+-   Kehadiran `sim_score` memberikan transparansi terhadap aspek kemiripan konten dalam rekomendasi akhir.
 
-- **Precision@K** menghitung proporsi rekomendasi relevan di antara K teratas:
-
-$$\text{Precision@K} = \frac{|\{\text{Rekomendasi relevan di top K}\}|}{K}$$
-
-- **Recall@K** mengukur proporsi film relevan dari *hold-out set* yang berhasil direkomendasikan di top K:
-
-$$\text{Recall@K} = \frac{|\{\text{Rekomendasi relevan di top K}\}|}{|\{\text{Total item relevan dalam hold-out set}\}|}$$
-
----
-
-**Contoh Hasil (Kualitatif dari Output Notebook):**  
-Untuk input **"Toy Story 2 (1999)"**:
-
-- Film input sendiri memiliki **`final_score` = 1.0** dan **`Genre Similarity to Input` = 1.0** (identik).  
-- Film seperti **"Toy Story (1995)"** dan **"Monsters, Inc. (2001)"** juga memiliki skor genre 1.0, menunjukkan kemiripan tinggi, dan `final_score` tinggi (0.92 dan 0.59).  
-- Film seperti **"Shawshank Redemption"** memiliki skor genre 0.0 (genre berbeda) namun `final_score` cukup tinggi (0.52), menandakan rekomendasi berdasar popularitas atau preferensi pengguna yang kuat.  
-- Rekomendasi lain seperti **"Star Wars: Episode IV"** memiliki skor genre rendah (0.087) dan `final_score` moderat (0.478), memperlihatkan keseimbangan antara kemiripan konten dan preferensi komunitas.
-
----
-
-**Insight (Kualitatif):**  
-- Sistem merekomendasikan film dengan kemiripan genre tinggi secara efektif.  
-- Sistem juga mampu merekomendasikan film berbeda genre jika didukung preferensi pengguna (potensi *serendipity*).  
-- Kolom **`final_score`** dan **`Genre Similarity to Input`** bersama-sama memberikan pemahaman mengapa sebuah film direkomendasikan, menggabungkan konten dan sinyal sosial.
-  
 ## Conclusion
 
 -   Model Collaborative Filtering berbasis Deep Learning mencapai RMSE **0.1857** (latih) dan **0.1874** (validasi), menunjukkan performa prediksi rating yang baik.
--   Model Content-Based Filtering yang diperbarui berhasil menggabungkan kemiripan konten (judul dan genre) dengan preferensi pengguna dan kemiripan genre murni, menghasilkan skor akhir yang lebih terdiferensiasi. Hasil kualitatif menunjukkan sistem mampu merekomendasikan film yang mirip secara genre maupun yang populer di antara pengguna dengan selera serupa.
--   Kedua pendekatan menawarkan solusi yang valid, dengan CF berfokus pada pola interaksi dan CBF pada karakteristik film yang diperkaya dengan sinyal komunitas dan konten.
-
+-   Model Content-Based Filtering yang diperbarui, yang menggabungkan kemiripan konten dengan preferensi pengguna dan kemiripan genre murni, menghasilkan daftar rekomendasi. Evaluasi pada pengguna sampel menunjukkan Precision@10 sebesar 0.2000 dan Recall@10 sebesar 0.0500. Analisis kualitatif terhadap `Genre Similarity to Input` dan `final_score` menunjukkan kemampuan sistem untuk menyeimbangkan relevansi konten dan popularitas.
+-   Kedua pendekatan menawarkan solusi yang valid untuk masalah rekomendasi film.
 ---
