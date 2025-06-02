@@ -220,7 +220,9 @@ $$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$$
 <br>
 **Hasil RMSE Model:**<br>
 Visualisasi learning curve RMSE selama proses training (20 epoch) disajikan di bawah ini:<br>
-![DL Model RMSE](img/output2.png)<br>
+
+![DL Model RMSE](https://github.com/Wynnzzz/movie-recommendation-system/blob/main/img/output2.png)<br>
+
 **Insight:**
 -   Pada akhir epoch ke-20, model `RecommenderNet` memperoleh nilai `root_mean_squared_error` sebesar **0.1857** untuk data latih dan **0.1874** untuk data validasi.
 -   Perbedaan yang kecil antara RMSE pada data latih dan data validasi menunjukkan bahwa model tidak mengalami overfitting yang signifikan dan memiliki kemampuan generalisasi yang baik terhadap data yang belum pernah dilihat sebelumnya. Penurunan RMSE yang konsisten pada kedua set data selama epoch menunjukkan bahwa proses pembelajaran model berjalan efektif.
@@ -248,8 +250,10 @@ Untuk sistem Content-Based Filtering ini, evaluasi performa dalam menghasilkan d
 
 $$\text{Precision@K} = \frac{|\{\text{Rekomendasi relevan di top K}\} \cap \{\text{Item di Hold-out}\}|}{K}$$
 <br>
+
 $$\text{Recall@K} = \frac{|\{\text{Rekomendasi relevan di top K}\} \cap \{\text{Item di Hold-out}\}|}{|\{\text{Total item relevan dalam Hold-out set}\}|}$$
 <br>
+
 Untuk evaluasi yang lebih komprehensif, prosedur ini idealnya diulang untuk banyak pengguna uji dan hasilnya dirata-ratakan.
 
 **Kenapa Menggunakan Precision@K dan Recall@K?**  
