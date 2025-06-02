@@ -113,19 +113,23 @@ Tahapan ini mencakup langkah-langkah untuk mempersiapkan data sebelum digunakan 
 3.  **Menghapus Kolom `timestamp` dari `df_ratings`**:
     *Alasan:* Kolom ini tidak digunakan dalam model.
 
-4.  **Menggabungkan Dataset**:
-    -   Menggabungkan `df_ratings` dan `df_movies` berdasarkan `movieId`.
-    *Alasan:* Untuk mendapatkan informasi film dan rating dalam satu dataframe.
+4.  **Menggabungkan Dataset `df_ratings` dan `df_movies`**:
+    -   Menggabungkan kedua dataframe berdasarkan `movieId` menggunakan `pd.merge()`.
+    *Alasan:* Untuk mendapatkan informasi film (judul, genre) bersama dengan data rating pengguna dalam satu dataframe (`combined_data`) yang akan digunakan pada Content-Based Filtering.
 
 5.  **Persiapan Data untuk Collaborative Filtering (Deep Learning)**:
-    -   **Encoding User dan Movie ID**: Mengubah `userId` dan `movieId` menjadi integer berurutan.
-    -   **Normalisasi Rating**: Mengubah skala rating menjadi [0, 1].
-    -   **Pembagian Data**: Membagi data menjadi data latih (80%) dan data validasi (20%).
-    *Alasan:* Mempersiapkan data untuk input model deep learning dan evaluasinya.
+    -   **Encoding User dan Movie ID**: Mengubah `userId` dan `movieId` pada `df_ratings` menjadi integer berurutan (encoded ID) untuk digunakan sebagai input pada lapisan Embedding model deep learning. Mapping asli disimpan untuk menerjemahkan kembali.
+        *Alasan:* Model deep learning memerlukan input numerik kategorikal yang dimulai dari 0.
+    -   **Normalisasi Rating**: Mengubah skala rating pada `df_ratings` menjadi rentang [0, 1] dengan mengurangkan `min_rating` dan membagi dengan (`max_rating` - `min_rating`).
+        *Alasan:* Membantu stabilisasi proses training model deep learning.
+    -   **Pengacakan Data (Shuffling)**: Mengacak urutan baris pada `df_ratings` menggunakan `df_ratings.sample(frac=1, random_state=42)`.
+        *Alasan:* Untuk memastikan bahwa pembagian data latih dan validasi tidak bias oleh urutan data asli (misalnya, jika data diurutkan berdasarkan waktu atau pengguna). Ini penting untuk mendapatkan evaluasi model yang lebih representatif.
+    -   **Pembagian Data**: Membagi data rating yang telah diacak (fitur: encoded user & movie ID, target: normalized rating) menjadi data latih (80%) dan data validasi (20%).
+        *Alasan:* Untuk melatih model dan mengevaluasi performanya pada data yang tidak terlihat saat pelatihan.
 
 6.  **Persiapan Data untuk Content-Based Filtering**:
     -   **TF-IDF Vectorization**: Menerapkan `TfidfVectorizer` pada kolom `clean_title` dan `genres_list` dari `df_movies` dengan `ngram_range=(1,2)`.
-    *Alasan:* Mengubah data teks menjadi representasi vektor numerik untuk perhitungan *cosine similarity*.
+    *Alasan:* Mengubah data teks (judul dan genre) menjadi representasi vektor numerik yang dapat digunakan untuk menghitung *cosine similarity* antar film.
 
 ## Modeling and Results
 
