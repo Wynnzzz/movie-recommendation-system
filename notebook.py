@@ -343,3 +343,36 @@ if choice in range(len(candidates)):
     print(recommendation_results(user_input, choice))
 else:
     print("Sorry, invalid choice!")
+
+def calculate_precision_recall_at_k(recommended_movie_ids, hold_out_movie_ids, k):
+    top_k_recommendations = recommended_movie_ids[:k]
+    hold_out_set = set(hold_out_movie_ids)
+
+    relevant_and_recommended = sum([1 for movie_id in top_k_recommendations if movie_id in hold_out_set])
+
+    precision_at_k = relevant_and_recommended / k if k else 0.0
+    recall_at_k = relevant_and_recommended / len(hold_out_set) if hold_out_set else 0.0
+
+    return precision_at_k, recall_at_k
+
+# Simulasikan user yang sama seperti sebelumnya
+user_id = 123
+k = 10
+
+# 1. Dapatkan hasil rekomendasi
+recs_df = recommendation_results("Toy Story", choice=3)
+recommended_ids = df_movies[df_movies['title'].isin(recs_df['title'])]['movieId'].tolist()
+
+# 2. Dapatkan film relevan (yang disukai user)
+liked_movies = df_ratings[(df_ratings['userId'] == user_id) & (df_ratings['rating'] >= 4.0)]
+hold_out_ids = liked_movies['movieId'].tolist()
+
+# 3. Hitung Precision@K dan Recall@K
+precision, recall = calculate_precision_recall_at_k(recommended_ids, hold_out_ids, k)
+
+# 4. Cetak hasil
+print(f"\nUser ID: {user_id}")
+print(f"Recommended Movie IDs (top-{k}): {recommended_ids}")
+print(f"Relevant Movie IDs (liked by user): {hold_out_ids}")
+print(f"Precision@{k}: {precision:.4f}")
+print(f"Recall@{k}: {recall:.4f}")
