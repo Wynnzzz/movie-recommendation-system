@@ -186,7 +186,7 @@ Contoh: Jika pengguna mencari "Toy Story" dan memilih "Toy Story 2 (1999)":
 |----|--------------------------------------------|----------------------------------------------|----------|-----------|-------------|
 | 1  | Toy Story 2 (1999)                        | Adventure, Animation, Children, Comedy, Fantasy | 0.983611 | 1.000000  | 1.000000    |
 | 2  | Toy Story (1995)                          | Adventure, Animation, Children, Comedy, Fantasy | 0.874127 | 1.000000  | 0.922469    |
-| 3  | Monsters, Inc. (2001)                     | Adventure, Animation, Children, Comedy, Fantasy | 0.409754 | 1.000000  | 0.593626    |
+| 3  | Monsters, Inc. (2001)                     | Adventure, Animation, Children, Comedy, Fantasy | 0.540722 | 1.000000  | 0.686371    |
 | 4  | Shrek (2001)                              | Adventure, Animation, Children, Comedy, Fantasy, Romance | 0.420460 | 0.886559  | 0.566780    |
 | 5  | Finding Nemo (2003)                       | Adventure, Animation, Children, Comedy       | 0.376863 | 0.858481  | 0.527384    |
 | 6  | Shawshank Redemption, The (1994)          | Crime, Drama                                 | 0.741638 | 0.000000  | 0.525157    |
