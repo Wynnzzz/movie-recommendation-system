@@ -45,13 +45,11 @@ Dataset ini bertujuan untuk memungkinkan pembangunan sistem yang memahami prefer
 
 **Deskripsi Variabel**
 **Dataset `movies.csv`**<br>
-Total data: 62.423 data (setelah pembersihan `(no genres listed)` menjadi 57.361 data)<br>
+Total data: 62.423 data<br>
 Berikut adalah daftar fitur (variabel) yang terdapat dalam dataset:
 -   `movieId`: Nomor unik identifikasi film (Integer)
--   `title`: Judul Film, seringkali menyertakan tahun rilis (String)
--   `genres`: Genre film, dipisahkan oleh `|` (String)
--   `clean_title`: Judul film yang sudah dibersihkan (String, dibuat saat preprocessing)
--   `genres_list`: Genre film yang sudah dibersihkan (String, spasi sebagai pemisah, dibuat saat preprocessing)
+-   `title`: Judul Film (String)
+-   `genres`: Genre film
 
 **Dataset `ratings.csv`**<br>
 Total data: 25.000.095 data<br>
@@ -89,7 +87,7 @@ Dilakukan dengan fungsi `isna().sum()` dan `duplicated().sum()`.<br>
     -   Jumlah Data Rating: 25.000.095
 3.  Top Genres<br>
     Menampilkan distribusi jumlah film per genre.<br>
-    ![Top Genres](https://github.com/Wynnzzz/movie-recommendation-system/raw/blob/8c7d9dc0c281856a4883e0bea9101fd200fa640e/img/output1.png) <br>
+    ![Top Genres](https://github.com/Wynnzzz/movie-recommendation-system/raw/main/img/output1.png) <br>
     **Insight:**
     -   Genre Drama, Comedy, dan Thriller merupakan genre yang paling banyak muncul dalam dataset. Action dan Romance juga cukup dominan.
 4.  Top 10 Film dengan Rata-Rata Rating Tertinggi<br>
@@ -221,7 +219,7 @@ $$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i - \hat{y}_i)^2}$$
 **Hasil RMSE Model:**<br>
 Visualisasi learning curve RMSE selama proses training (20 epoch) disajikan di bawah ini:<br>
 
-![DL Model RMSE](https://github.com/Wynnzzz/movie-recommendation-system/raw/blob/main/img/output2.png)<br>
+![DL Model RMSE](https://github.com/Wynnzzz/movie-recommendation-system/raw/main/img/output2.png)<br>
 
 **Insight:**
 -   Pada akhir epoch ke-20, model `RecommenderNet` memperoleh nilai `root_mean_squared_error` sebesar **0.1857** untuk data latih dan **0.1874** untuk data validasi.
